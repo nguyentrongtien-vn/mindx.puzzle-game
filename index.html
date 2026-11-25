@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MindX Puzzle Game - Game Xếp Hình</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: '#00c988'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .keycap-active {
+      background-color: #00c988 !important;
+      color: white !important;
+      transform: scale(0.90) translateY(1px);
+      box-shadow: 0 0 12px rgba(0, 201, 136, 0.6) !important;
+      border-color: #00c988 !important;
+    }
+
+    .tile-movable {
+      cursor: pointer;
+    }
+
+    .tile-movable:hover {
+      transform: scale(1.02);
+      filter: brightness(1.03);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+
+    .tile-movable:active {
+      transform: scale(0.96) !important;
+    }
+
+    @keyframes modalFadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0.92);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .modal-animate {
+      animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+</head>
+
+<body
+  class="bg-[#f0f2f5] min-h-screen w-full text-gray-800 font-sans flex flex-col items-center justify-center p-2 sm:p-4 md:p-6">
+
+  <main
+    class="w-full max-w-[1300px] min-h-[94vh] bg-white rounded-3xl shadow-lg border border-gray-100 p-6 sm:p-8 lg:p-10 flex flex-col items-center justify-between relative">
+
+    <button id="btn-fullscreen" title="Bật/Tắt Toàn màn hình (F11)"
+      class="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer flex items-center gap-1.5 text-xs sm:text-sm font-medium">
+      <svg id="icon-expand" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+      </svg>
+      <svg id="icon-compress" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M4 4l5 5m0 0H5m4 0V5m7 5l5-5m-5 5h4m-4 0V5M4 20l5-5m0 0H5m4 0v4m7-4l5 5m-5-5h4m-4 0v4" />
+      </svg>
+      <span class="hidden sm:inline">Toàn màn hình</span>
+    </button>
+
+    <div class="mb-4 sm:mb-6">
+      <button id="btn-action"
+        class="bg-[#00c988] hover:bg-emerald-600 active:scale-95 text-white font-semibold text-base sm:text-lg lg:text-xl px-10 py-2.5 sm:py-3 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer">
+        Bắt đầu
+      </button>
+    </div>
+
+    <!-- 2. Khu vực Game: Bảng xếp hình (Trái) + Sidebar (Phải) -->
+    <div
+      class="flex flex-col lg:flex-row items-center lg:items-center justify-center gap-6 sm:gap-10 lg:gap-14 w-full flex-1 my-auto">
+
+      <!-- Bảng xếp hình (3 hàng x 4 cột = 12 ô) -->
+      <div class="flex-shrink-0 flex items-center justify-center">
+        <div id="game-board"
+          class="grid grid-cols-4 gap-3 sm:gap-4 lg:gap-5 p-4 sm:p-6 lg:p-7 bg-white rounded-3xl border border-gray-100 shadow-sm w-[320px] sm:w-[500px] md:w-[580px] lg:w-[680px] xl:w-[740px] select-none">
+          <!-- Các ô số sẽ được JS render tại đây -->
+        </div>
+      </div>
+
+      <!-- Sidebar bên phải: Đồng hồ + Hướng dẫn di chuyển -->
+      <div class="flex flex-col gap-5 sm:gap-6 w-full max-w-[240px] sm:max-w-[280px] lg:max-w-[320px]">
+
+        <!-- Khối Đồng Hồ -->
+        <div
+          class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
+          <span class="text-sm sm:text-base font-semibold text-gray-700 mb-2.5">Đồng Hồ</span>
+          <div id="timer-display"
+            class="bg-emerald-100/70 text-emerald-800 font-mono font-bold text-2xl sm:text-3xl lg:text-4xl px-6 py-2.5 sm:py-3 rounded-2xl w-full text-center shadow-inner transition-colors duration-200">
+            00:00
+          </div>
+        </div>
+
+        <!-- Khối Hướng Dẫn Di Chuyển -->
+        <div class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-100 flex flex-col items-center">
+          <span class="text-sm sm:text-base font-semibold text-gray-700 mb-4 text-center">Hướng Dẫn Di Chuyển</span>
+
+          <!-- Nhóm phím Mũi tên -->
+          <div class="flex flex-col items-center gap-1.5 mb-4">
+            <div data-key="arrowup"
+              class="w-8 h-8 sm:w-10 sm:h-10 lg:w-11 lg:h-11 bg-white border border-gray-300 rounded-xl shadow-sm flex items-center justify-center text-sm sm:text-base lg:text-lg font-bold text-gray-700 transition-all duration-100 select-none">
+              ↑</div>
+            <div class="flex gap-1.5">
+              <div data-key="arrowleft"
+                class="w-8 h-8 sm:w-10 sm:h-10 lg:w-11 lg:h-11 bg-white border border-gray-300 rounded-xl shadow-sm flex items-center justify-center text-sm sm:text-base lg:text-lg font-bold text-gray-700 transition-all duration-100 select-none">
+                ←</div>
+              <div data-key="arrowdown"
+                class="w-8 h-8 sm:w-10 sm:h-10 lg:w-11 lg:h-11 bg-white border border-gray-300 rounded-xl shadow-sm flex items-center justify-center text-sm sm:text-base lg:text-lg font-bold text-gray-700 transition-all duration-100 select-none">
+                ↓</div>
+              <div data-key="arrowright"
+                class="w-8 h-8 sm:w-10 sm:h-10 lg:w-11 lg:h-11 bg-white border border-gray-300 rounded-xl shadow-sm flex items-center justify-center text-sm sm:text-base lg:text-lg font-bold text-gray-700 transition-all duration-100 select-none">
+                →</div>
+            </div>
+          </div>
+
+          <!-- Nhóm phím W, A, S, D -->
+          <div class="flex flex-col items-center gap-1.5">
+            <div data-key="w"
+              class="w-8 h-8 sm:w-10 sm:h-10 lg:w-11 lg:h-11 bg-white border border-gray-300 rounded-xl shadow-sm flex items-center justify-center text-sm sm:text-base lg:text-lg font-bold text-gray-700 transition-all duration-100 select-none">
+              W</div>
+            <div class="flex gap-1.5">
+              <div data-key="a"
+                class="w-8 h-8 sm:w-10 sm:h-10 lg:w-11 lg:h-11 bg-white border border-gray-300 rounded-xl shadow-sm flex items-center justify-center text-sm sm:text-base lg:text-lg font-bold text-gray-700 transition-all duration-100 select-none">
+                A</div>
+              <div data-key="s"
+                class="w-8 h-8 sm:w-10 sm:h-10 lg:w-11 lg:h-11 bg-white border border-gray-300 rounded-xl shadow-sm flex items-center justify-center text-sm sm:text-base lg:text-lg font-bold text-gray-700 transition-all duration-100 select-none">
+                S</div>
+              <div data-key="d"
+                class="w-8 h-8 sm:w-10 sm:h-10 lg:w-11 lg:h-11 bg-white border border-gray-300 rounded-xl shadow-sm flex items-center justify-center text-sm sm:text-base lg:text-lg font-bold text-gray-700 transition-all duration-100 select-none">
+                D</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- 3. Bảng Lịch Sử Lượt Chơi -->
+    <div class="w-full max-w-4xl lg:max-w-5xl mt-6 lg:mt-8">
+      <h3 class="text-center font-bold text-gray-800 text-sm sm:text-base lg:text-lg mb-3">
+        Lịch Sử Lượt Chơi
+      </h3>
+      <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <table class="w-full text-left text-xs sm:text-sm lg:text-base">
+          <thead class="bg-gray-100/90 text-gray-700 font-semibold border-b border-gray-200">
+            <tr>
+              <th scope="col" class="px-4 sm:px-6 py-3 text-center w-20">#</th>
+              <th scope="col" class="px-4 sm:px-6 py-3 text-center">Bước đi</th>
+              <th scope="col" class="px-4 sm:px-6 py-3 text-center">Thời Gian</th>
+            </tr>
+          </thead>
+          <tbody id="history-body" class="divide-y divide-gray-100">
+            <tr>
+              <td colspan="3" class="px-4 py-4 text-center text-gray-400 italic">
+                Chưa có lượt chơi nào hoàn thành
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal thông báo YOU WIN! -->
+  <div id="win-modal"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 hidden">
+    <div
+      class="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl max-w-sm w-full text-center border border-gray-100 modal-animate">
+      <div class="text-4xl sm:text-5xl mb-3">🏆</div>
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-red-500 mb-2 tracking-wide animate-bounce">
+        YOU WIN!
+      </h2>
+      <p class="text-gray-600 text-sm mb-4">
+        Chúc mừng bạn đã hoàn thành xếp đúng tất cả các ô số!
+      </p>
+
+      <div class="bg-slate-50 rounded-xl p-3 mb-6 text-sm text-gray-700 flex justify-around border border-gray-100">
+        <div>
+          <span class="text-gray-500 text-xs block">Bước đi</span>
+          <span id="win-moves" class="font-bold text-base text-gray-800">0</span>
+        </div>
+        <div class="border-r border-gray-200"></div>
+        <div>
+          <span class="text-gray-500 text-xs block">Thời gian</span>
+          <span id="win-time" class="font-bold text-base font-mono text-emerald-600">00:00</span>
+        </div>
+      </div>
+
+      <button id="btn-modal-restart"
+        class="w-full bg-[#00c988] hover:bg-emerald-600 active:scale-95 text-white font-semibold py-2.5 px-6 rounded-xl shadow-md transition-all duration-150 cursor-pointer">
+        Chơi lại
+      </button>
+    </div>
+  </div>
+
+  <!-- Các scripts module hóa chuẩn đề bài -->
+  <script src="./js/config.js"></script>
+  <script src="./js/timer.js"></script>
+  <script src="./js/history.js"></script>
+  <script src="./js/game.js"></script>
+  <script src="./js/ui.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+
+</html>
